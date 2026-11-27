@@ -8,9 +8,9 @@ export const CONFIG = {
 
   // Stage lengths in metres; forest gate at 1400 m.
   stages: [
-    { name: 'FARMYARD', lenM: 500, speed: 300, minGap: 300 },
-    { name: 'BARN', lenM: 500, speed: 360, minGap: 340 },
-    { name: 'KITCHEN', lenM: 400, speed: 420, minGap: 380 },
+    { name: 'FARMYARD', lenM: 500, speed: 300, minGap: 360 },
+    { name: 'BARN', lenM: 500, speed: 360, minGap: 400 },
+    { name: 'KITCHEN', lenM: 400, speed: 420, minGap: 440 },
   ],
   gateM: 1400,
   pieBoostMul: 1.35,

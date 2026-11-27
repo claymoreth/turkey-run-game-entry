@@ -41,17 +41,20 @@ export function applyShot(s) {
   if (shot === 'farmyard') {
     s.mode = 'playing';
     s.world.stage = 0;
-    s.turkey.x = 6000;
+    // Score matches the displayed distance (150 m); world coords shifted
+    // +200 px (= startX) so (x - startX) / 40 reads exactly 150 m.
+    s.score = 150;
+    s.turkey.x = 6200;
     s.turkey.y = GROUND - 130; // mid-jump
     s.turkey.vy = -220;
     s.turkey.grounded = false;
     s.farmer.gap = 120; // farmer visible at the left edge
     s.camX = s.turkey.x - 520;
-    s.world.obstacles.push(makeObstacle('fence', 6120));
-    s.world.obstacles.push(makeObstacle('hay', 6600));
-    s.world.obstacles.push(makeObstacle('pumpkin', 6900));
+    s.world.obstacles.push(makeObstacle('fence', 6320));
+    s.world.obstacles.push(makeObstacle('hay', 6800));
+    s.world.obstacles.push(makeObstacle('pumpkin', 7100));
     for (let i = 0; i < 4; i++) {
-      s.world.collectibles.push({ type: 'corn', x: 6160 + i * 44, y: GROUND - 190 + Math.sin((i / 3) * Math.PI) * 30, taken: false });
+      s.world.collectibles.push({ type: 'corn', x: 6360 + i * 44, y: GROUND - 190 + Math.sin((i / 3) * Math.PI) * 30, taken: false });
     }
     return true;
   }
@@ -59,23 +62,26 @@ export function applyShot(s) {
   if (shot === 'kitchen') {
     s.mode = 'playing';
     s.world.stage = 2;
-    s.turkey.x = 46000; // ~1150 m, deep in stage 3 (night)
+    // Score matches the displayed distance (1150 m); coords shifted +200 px
+    // (= startX) so (x - startX) / 40 reads exactly 1150 m.
+    s.score = 1150;
+    s.turkey.x = 46200; // 1150 m, deep in stage 3 (night)
     s.turkey.y = GROUND;
     s.turkey.grounded = true;
     s.farmer.gap = 60; // farmer right behind: red proximity bar (closeness 0.875)
     // camX = turkey.x - 300 (was -520): pot/knife were at the far right edge
     // (screen 1220/1170, barely visible). Now: firejet 700, knife 950, pot 1000.
     s.camX = s.turkey.x - 300;
-    const jet = makeObstacle('firejet', 46400, { cycle: 1.5 }); // bursting
+    const jet = makeObstacle('firejet', 46600, { cycle: 1.5 }); // bursting
     jet.burst = true;
     s.world.obstacles.push(jet);
     // Knife 'stuck' (was 'warn'): warn shows only a floor shadow + "!",
     // the blade itself is invisible. A stuck blade reads as a knife.
-    const knife = makeObstacle('knifeFall', 46650, {});
+    const knife = makeObstacle('knifeFall', 46850, {});
     knife.state = 'stuck';
     s.world.obstacles.push(knife);
-    s.world.obstacles.push(makeObstacle('pot', 46700));
-    s.world.collectibles.push({ type: 'feather', x: 46520, y: GROUND - 200, taken: false });
+    s.world.obstacles.push(makeObstacle('pot', 46900));
+    s.world.collectibles.push({ type: 'feather', x: 46720, y: GROUND - 200, taken: false });
     return true;
   }
 

@@ -285,7 +285,7 @@ Object.defineProperty(window, '__turkeyrun', {
     get snapshot() {
       return {
         score: s.score,
-        distance: Math.floor(s.turkey.x / CONFIG.pxPerM),
+        distance: Math.floor((s.turkey.x - CONFIG.turkey.startX) / CONFIG.pxPerM),
         lives: s.turkey.lives,
         stage: s.world.stage,
         gap: Math.round(s.farmer.gap),

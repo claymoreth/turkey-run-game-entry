@@ -1,6 +1,6 @@
 // HUD (canvas-drawn): score, distance, hearts, stage name, farmer proximity
 // bar (green -> red + label), speed. Title / pause / CAUGHT / ESCAPED screens.
-import { CONFIG, STAGE_NAMES } from './config.js';
+import { CONFIG, STAGE_NAMES, runSpeedForStage } from './config.js';
 
 const W = CONFIG.canvas.w;
 const H = CONFIG.canvas.h;
@@ -14,7 +14,8 @@ function panel(ctx, x, y, w, h) {
 
 export function drawHUD(ctx, s) {
   const t = s.turkey;
-  const distM = Math.floor(t.x / CONFIG.pxPerM);
+  // Distance run from the start line (turkey starts at startX = 200 px = 5 m).
+  const distM = Math.floor((t.x - CONFIG.turkey.startX) / CONFIG.pxPerM);
 
   panel(ctx, 16, 14, 300, 92);
   ctx.textAlign = 'left';
@@ -53,7 +54,10 @@ export function drawHUD(ctx, s) {
   ctx.fillRect(bx, 50, barW * closeness, 16);
   ctx.fillStyle = '#f7ead1';
   ctx.font = '16px system-ui, sans-serif';
-  ctx.fillText('Speed ' + Math.round(s.speed) + ' px/s' + (s.boost > 0 ? '  •  PIE BOOST!' : ''), bx, 88);
+  // In shot mode the game never ticks, so s.speed stays 0 — show the
+  // stage's run speed instead (live play is unaffected: speed is non-zero).
+  const speed = s.shotMode ? runSpeedForStage(s.world.stage) : s.speed;
+  ctx.fillText('Speed ' + Math.round(speed) + ' px/s' + (s.boost > 0 ? '  •  PIE BOOST!' : ''), bx, 88);
 
   // Controls hint (bottom).
   ctx.textAlign = 'center';
@@ -115,7 +119,7 @@ export function drawPause(ctx) {
 export function drawCaught(ctx, s) {
   ctx.fillStyle = 'rgba(40,4,4,0.72)';
   ctx.fillRect(0, 0, W, H);
-  bigTitle(ctx, 'DINNER IS SERVED...', 'The farmer caught you at ' + Math.floor(s.turkey.x / CONFIG.pxPerM) + ' m', '#ff7b6b');
+  bigTitle(ctx, 'DINNER IS SERVED...', 'The farmer caught you at ' + Math.floor((s.turkey.x - CONFIG.turkey.startX) / CONFIG.pxPerM) + ' m', '#ff7b6b');
   ctx.textAlign = 'center';
   ctx.fillStyle = '#f7ead1';
   ctx.font = '26px system-ui, sans-serif';

@@ -13,7 +13,7 @@ export function makeObstacle(type, x, opts) {
     case 'hay':
       o.w = 84; o.h = 70; break;
     case 'pumpkin':
-      o.w = 56; o.h = 56; o.vx = 40; break; // rolls toward player (+40 px/s)
+      o.w = 56; o.h = 56; o.vx = 25; break; // rolls toward player (25 px/s; was 40: it closed the landing gap too fast for the gate run)
     case 'knifeSwing':
       o.w = 30; o.h = 120; o.pivotY = GROUND - 190; o.phase = o.phase || 0; break;
     case 'beam':
