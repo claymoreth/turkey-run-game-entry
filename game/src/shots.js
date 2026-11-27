@@ -27,7 +27,7 @@ export function applyShot(s) {
     s.mode = 'title';
     s.turkey.x = 200;
     s.turkey.y = GROUND;
-    s.farmer.gap = 320;
+    s.farmer.gap = 120; // was 320: farmer stood off-frame; 120 keeps him visible
     s.world.stage = 0;
     s.camX = 0;
     s.world.obstacles.push(makeObstacle('fence', 700));
@@ -62,23 +62,28 @@ export function applyShot(s) {
     s.turkey.x = 46000; // ~1150 m, deep in stage 3 (night)
     s.turkey.y = GROUND;
     s.turkey.grounded = true;
-    s.farmer.gap = 260;
-    s.camX = s.turkey.x - 520;
+    s.farmer.gap = 60; // farmer right behind: red proximity bar (closeness 0.875)
+    // camX = turkey.x - 300 (was -520): pot/knife were at the far right edge
+    // (screen 1220/1170, barely visible). Now: firejet 700, knife 950, pot 1000.
+    s.camX = s.turkey.x - 300;
     const jet = makeObstacle('firejet', 46400, { cycle: 1.5 }); // bursting
     jet.burst = true;
     s.world.obstacles.push(jet);
-    const knife = makeObstacle('knifeFall', 46750, {});
-    knife.state = 'warn';
-    knife.timer = 0.7;
+    // Knife 'stuck' (was 'warn'): warn shows only a floor shadow + "!",
+    // the blade itself is invisible. A stuck blade reads as a knife.
+    const knife = makeObstacle('knifeFall', 46650, {});
+    knife.state = 'stuck';
     s.world.obstacles.push(knife);
-    s.world.obstacles.push(makeObstacle('pot', 47000));
+    s.world.obstacles.push(makeObstacle('pot', 46700));
     s.world.collectibles.push({ type: 'feather', x: 46520, y: GROUND - 200, taken: false });
     return true;
   }
 
   if (shot === 'escaped') {
     s.mode = 'escaped';
-    s.score = 15420;
+    // Realistic final score for a 1400 m run (1400 distance + ~340 corn).
+    // Was 15420: implausible, looked faked.
+    s.score = 1740;
     s.turkey.x = CONFIG.gateM * CONFIG.pxPerM;
     s.turkey.y = GROUND;
     s.farmer.gap = 700;

@@ -109,9 +109,6 @@ export function createInput(canvas) {
     input.restartPressed = false;
   };
 
-  // True while a buffered jump press is still fresh (7 ticks).
-  input.bufferFresh = () => input.tick - input.bufferTick <= 7;
-
   input.destroy = () => {
     window.removeEventListener('keydown', keyDown);
     window.removeEventListener('keyup', keyUp);

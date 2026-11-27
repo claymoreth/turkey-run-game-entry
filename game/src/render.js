@@ -20,7 +20,7 @@ export function render(ctx, s) {
 
   drawBackground(ctx, camX, s.world.stage, s.time);
   drawGround(ctx, camX, s.world.stage);
-  drawGate(ctx, camX, s.world.gateX);
+  drawGate(ctx, camX, s.world.gateX, s.mode === 'escaped');
 
   // Collectibles.
   for (const c of s.world.collectibles) {

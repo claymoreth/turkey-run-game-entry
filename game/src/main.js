@@ -26,8 +26,10 @@ const s = {
   time: 0,
   tick: 0,
   score: 0,
+  distAcc: 0, // fractional metres banked toward the next whole score point
   speed: 0, // current run speed (px/s, with boost)
   boost: 0, // pie boost seconds remaining
+  slow: 0, // obstacle-hit slowdown seconds remaining (55% speed)
   pieInvuln: 0,
   camX: 0,
   shake: { x: 0, y: 0 },
@@ -48,7 +50,9 @@ function resetRun() {
   s.world = createWorld(20261127 + Math.floor(Math.random() * 100000));
   s.fx = createFX();
   s.score = 0;
+  s.distAcc = 0;
   s.boost = 0;
+  s.slow = 0;
   s.pieInvuln = 0;
   s.camX = 0;
   s.hitStop = 0;
@@ -61,7 +65,10 @@ function startGame() {
   resetRun();
 }
 
-function onHit() {
+// Lose one life. Two paths: an obstacle hit slows the turkey (the farmer
+// keeps his own pace, so the gap closes) while a farmer touch knocks the
+// turkey forward and stumbles the farmer back.
+function loseLife(kind) {
   const t = s.turkey;
   t.lives -= 1;
   addTrauma(s.fx, 0.6);
@@ -73,12 +80,18 @@ function onHit() {
     s.mode = 'caught';
     return;
   }
-  // Knock forward: gap jumps to 320, farmer stumbles, turkey invulnerable.
-  s.farmer.gap = CONFIG.farmer.knockGap;
-  farmerStumble(s.farmer);
+  if (kind === 'farmer') {
+    // Knock forward: gap jumps to 320, farmer stumbles, turkey invulnerable.
+    s.farmer.gap = CONFIG.farmer.knockGap;
+    farmerStumble(s.farmer);
+    audio.stumble();
+  } else {
+    // Obstacle: turkey drops to 55% speed for 0.7 s. No knock-back, no
+    // farmer stumble — otherwise the slowdown could never close the gap.
+    s.slow = CONFIG.obstacleSlowSecs;
+  }
   t.invuln = CONFIG.farmer.invulnSecs;
   s.hitStop = CONFIG.hitStopHit;
-  audio.stumble();
 }
 
 function collect(c) {
@@ -147,11 +160,22 @@ function step(dt) {
   const baseSpeed = runSpeedForStage(stage);
   if (s.boost > 0) s.boost -= dt;
   if (s.pieInvuln > 0) s.pieInvuln -= dt;
-  const runSpeed = baseSpeed * (s.boost > 0 ? CONFIG.pieBoostMul : 1);
+  // Turkey speed: stage speed x pie boost, then the obstacle-hit slowdown.
+  // The farmer paces himself on baseSpeed (never slowed with the turkey).
+  let runSpeed = baseSpeed * (s.boost > 0 ? CONFIG.pieBoostMul : 1);
+  const farmerPace = runSpeed;
+  if (s.slow > 0) {
+    s.slow -= dt;
+    runSpeed *= CONFIG.obstacleSlowMul;
+  }
   s.speed = runSpeed;
 
   s.turkey.x += runSpeed * dt;
-  s.score += Math.floor(runSpeed * dt / CONFIG.pxPerM); // +1 per metre travelled
+  // Distance score: bank fractional metres, spend whole ones (the old
+  // Math.floor(runSpeed*dt/40) was 0 every tick, so the score never moved).
+  s.distAcc += runSpeed * dt / CONFIG.pxPerM;
+  s.score += Math.floor(s.distAcc);
+  s.distAcc %= 1;
 
   updateTurkey(s.turkey, input, dt, s.tick, {
     onJump: () => audio.jump(),
@@ -161,7 +185,7 @@ function step(dt) {
     },
   });
 
-  updateFarmer(s.farmer, runSpeed, dt, {
+  updateFarmer(s.farmer, runSpeed, farmerPace, dt, {
     onStumble: () => audio.stumble(),
   });
 
@@ -188,22 +212,28 @@ function step(dt) {
     }
   }
 
-  // Obstacle collisions.
+  // Farmer touch FIRST: if he has closed to <=24 the moment invulnerability
+  // ends, he catches you. He takes precedence over an obstacle in the same
+  // tick (photo-finish, seed 999: the obstacle was checked first and killed
+  // the turkey in the exact tick invulnerability expired, gap 18.0).
+  // Vulnerability is read fresh for each check, so one tick can never cost
+  // two lives (the old shared `vulnerable` flag allowed obstacle + touch
+  // to both fire in the same tick).
+  if (s.mode === 'playing' && s.turkey.invuln <= 0 && s.pieInvuln <= 0 && s.farmer.gap <= CONFIG.farmer.touchGap) {
+    loseLife('farmer');
+  }
+
+  // Obstacle collisions (skipped if the touch just ended the run, and
+  // blocked if the touch just set invulnerability this tick).
   const tb = turkeyBox(s.turkey);
-  const vulnerable = s.turkey.invuln <= 0 && s.pieInvuln <= 0;
-  if (vulnerable) {
+  if (s.mode === 'playing' && s.turkey.invuln <= 0 && s.pieInvuln <= 0) {
     for (const o of s.world.obstacles) {
       const ob = obstacleBox(o);
       if (ob && aabbHit(tb, ob)) {
-        onHit();
+        loseLife('obstacle');
         break;
       }
     }
-  }
-
-  // Farmer touch (gap <= 24) — same hit path.
-  if (s.mode === 'playing' && vulnerable && s.farmer.gap <= CONFIG.farmer.touchGap) {
-    onHit();
   }
 
   // Collectibles (generous pickup radius around the turkey centre).
@@ -263,6 +293,18 @@ Object.defineProperty(window, '__turkeyrun', {
         turkeyX: Math.round(s.turkey.x),
         turkeyY: Math.round(s.turkey.y),
         turkeyVy: Math.round(s.turkey.vy),
+        sliding: s.turkey.sliding,
+        slideHeld: input.slideHeld,
+        // Next obstacle ahead (read-only debug, for playtest autopilots).
+        nextObstacle: (() => {
+          const t = s.turkey;
+          let best = null;
+          for (const o of s.world.obstacles) {
+            if (o.x + o.w < t.x - 40) continue; // already passed
+            if (!best || o.x < best.x) best = o;
+          }
+          return best ? { type: best.type, dist: Math.round(best.x - t.x), w: best.w, h: best.h } : null;
+        })(),
         fps: Math.round(s.fps),
         mode: s.mode,
       };
@@ -276,6 +318,10 @@ if (applyShot(s)) {
   s.shake = { x: 0, y: 0 };
   drawFrame();
 } else {
+  // Title display only: park the farmer beside the turkey (gap 120) so he
+  // is visible on the title screen. resetRun() re-creates the farmer at
+  // gap 320 when the run actually starts, so this never affects gameplay.
+  s.farmer.gap = 120;
   let last = performance.now();
   let acc = 0;
   let frames = 0;

@@ -27,16 +27,18 @@ export function createWorld(seed) {
     stage: 0,
     gateX: GATE_X,
     reachedGate: false,
-    // Parallax scenery seeds (deterministic per seed).
-    hills: Array.from({ length: 24 }, (_, i) => ({ x: i * 620 + rng.range(0, 200), h: rng.range(90, 220), w: rng.range(300, 520) })),
-    trees: Array.from({ length: 60 }, (_, i) => ({ x: i * 260 + rng.range(0, 120), h: rng.range(70, 150), kind: rng.int(0, 2) })),
+    // Parallax scenery is drawn procedurally in drawBackground (fixed
+    // repeating hills/trees); no per-world scenery data is stored.
   };
 }
 
-function introTypeForStage(stage) {
-  if (stage === 1) return 'knifeSwing';
-  if (stage === 2) return 'firejet';
-  return null;
+// First appearances of a stage's new hazards: each gets one solo spawn,
+// alone, with an extra-wide gap after it. Stage 2 has two new types, so
+// its intros run in order: firejet first, then knifeFall.
+function introTypesForStage(stage) {
+  if (stage === 1) return ['knifeSwing'];
+  if (stage === 2) return ['firejet', 'knifeFall'];
+  return [];
 }
 
 function spawnPattern(world, x, stage) {
@@ -46,10 +48,11 @@ function spawnPattern(world, x, stage) {
   let type = rng.pick(pool);
 
   // First appearance of a new stage's hazard: alone, extra-wide gap after it.
-  const intro = introTypeForStage(stage);
-  if (intro && !world.introGiven[stage]) {
-    type = intro;
-    world.introGiven[stage] = true;
+  const intros = introTypesForStage(stage);
+  const pendingIntro = intros.find((t) => !world.introGiven[stage + ':' + t]);
+  if (pendingIntro) {
+    type = pendingIntro;
+    world.introGiven[stage + ':' + pendingIntro] = true;
   }
 
   const ob = makeObstacle(type, x, { phase: rng.range(0, Math.PI * 2), cycle: rng.range(0, 2) });
@@ -202,7 +205,7 @@ export function drawGround(ctx, camX, stage) {
   ctx.fillRect(0, GROUND - 4, W, 8);
 }
 
-export function drawGate(ctx, camX, gateX) {
+export function drawGate(ctx, camX, gateX, hideSign) {
   const sx = gateX - camX;
   if (sx < -300 || sx > 1600) return;
   // Forest gate: two tall trees + arch.
@@ -213,6 +216,9 @@ export function drawGate(ctx, camX, gateX) {
   ctx.arc(sx - 77, GROUND - 270, 52, 0, Math.PI * 2);
   ctx.arc(sx + 77, GROUND - 270, 52, 0, Math.PI * 2);
   ctx.fill();
+  // Sign text hidden on the ESCAPED screen: the overlay's own title + score
+  // line sit at the same spot and the two texts collide (P2 fix).
+  if (hideSign) return;
   ctx.fillStyle = '#f7ead1';
   ctx.font = 'bold 22px system-ui, sans-serif';
   ctx.textAlign = 'center';

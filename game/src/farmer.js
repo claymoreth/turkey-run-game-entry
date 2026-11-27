@@ -15,6 +15,7 @@ export function createFarmer() {
     windup: 0,
     lunge: 0,
     stumble: 0,
+    catchUp: false, // after LAG exit: run 1.15x until gap < catchUpExitGap
     hatFly: 0, // hat-fly animation timer
     hatX: 0,
     hatY: 0,
@@ -33,13 +34,17 @@ function requestState(f, next) {
 }
 
 function applyState(f, next) {
+  const prev = f.state;
   f.state = next;
   f.stateTime = 0;
   f.pendingState = null;
   if (next === 'SURGE') {
     f.windup = F.windupSecs;
     f.lunge = 0;
+    f.catchUp = false;
   }
+  // Leaving LAG for CHASE arms the catch-up run (1.15x until gap < 250).
+  if (next === 'CHASE' && prev === 'LAG') f.catchUp = true;
   if (next === 'LAG') f.lookAround = 0;
 }
 
@@ -52,9 +57,13 @@ export function farmerStumble(f) {
   f.state = 'CHASE';
   f.stateTime = 0;
   f.pendingState = null;
+  f.catchUp = false;
 }
 
-export function updateFarmer(f, runSpeed, dt, events) {
+// turkeySpeed = the turkey's ACTUAL speed this tick (slowed after an
+// obstacle hit); baseSpeed = the farmer's own pace (stage speed x boost).
+// The farmer never slows with the turkey — that is what closes the gap.
+export function updateFarmer(f, turkeySpeed, baseSpeed, dt, events) {
   f.stateTime += dt;
   f.runPhase += dt * 12;
 
@@ -74,14 +83,19 @@ export function updateFarmer(f, runSpeed, dt, events) {
     if (f.state === 'CHASE' && f.surgeBelowTime >= F.surgeHoldSecs) {
       requestState(f, 'SURGE');
     }
-    if (f.state !== 'LAG' && f.gap > F.lagEnterGap) requestState(f, 'LAG');
-    if (f.state === 'LAG' && f.gap < F.lagExitGap) requestState(f, 'CHASE');
+    // No LAG re-entry while catching up after a LAG exit.
+    if (f.state !== 'LAG' && f.gap > F.lagEnterGap && !f.catchUp) requestState(f, 'LAG');
+    // LAG exits by gap OR by timer (max 2.5 s) — the timer is the escape
+    // from the old permanent trap (gap only grew inside LAG).
+    if (f.state === 'LAG' && (f.gap < F.lagExitGap || f.stateTime >= F.lagMaxSecs)) {
+      requestState(f, 'CHASE');
+    }
   }
 
   f.telegraph = f.gap < 150;
 
-  // Behaviour per state (speeds are relative: gap change per second).
-  let speed = runSpeed; // farmer world speed; gap shrinks when farmer faster
+  // Behaviour per state (speeds are the farmer's own world speed).
+  let speed = baseSpeed;
   if (f.stumble > 0) {
     f.stumble -= dt;
     speed = 0;
@@ -93,7 +107,7 @@ export function updateFarmer(f, runSpeed, dt, events) {
       if (f.windup <= 0) f.lunge = F.lungeSecs;
     } else if (f.lunge > 0) {
       f.lunge -= dt;
-      speed = runSpeed + F.lungeBonus;
+      speed = baseSpeed + F.lungeBonus;
       if (f.lunge <= 0) {
         // Lunge missed: stumble.
         f.stumble = F.stumbleSecs;
@@ -105,20 +119,25 @@ export function updateFarmer(f, runSpeed, dt, events) {
       }
     } else {
       requestState(f, 'CHASE');
-      speed = runSpeed;
+      speed = baseSpeed;
     }
   } else if (f.state === 'LAG') {
-    speed = runSpeed * F.lagSpeedMul;
+    speed = baseSpeed * F.lagSpeedMul;
     f.lookAround += dt;
   } else {
-    // CHASE: speed = runSpeed + clamp((gap-260)*0.9, -40, 90).
-    const adj = Math.max(F.chaseClamp.min, Math.min(F.chaseClamp.max, (f.gap - F.chaseTargetGap) * F.chaseGain));
-    speed = runSpeed + adj;
+    // CHASE: after a LAG exit, run 1.15x until the gap is back under 250.
+    if (f.catchUp) {
+      speed = baseSpeed * F.catchUpMul;
+      if (f.gap < F.catchUpExitGap) f.catchUp = false;
+    } else {
+      // speed = baseSpeed + clamp((gap-185)*0.9, -40, 90).
+      const adj = Math.max(F.chaseClamp.min, Math.min(F.chaseClamp.max, (f.gap - F.chaseTargetGap) * F.chaseGain));
+      speed = baseSpeed + adj;
+    }
   }
 
-  // Gap dynamics: turkey moves at runSpeed; farmer at `speed`.
-  // gap decreases when farmer is faster than the turkey.
-  f.gap += (runSpeed - speed) * dt;
+  // Gap dynamics: gap shrinks when the farmer is faster than the turkey.
+  f.gap += (turkeySpeed - speed) * dt;
   if (f.gap < 0) f.gap = 0;
   if (f.gap > 900) f.gap = 900;
 

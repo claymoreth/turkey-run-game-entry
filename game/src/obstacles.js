@@ -19,7 +19,7 @@ export function makeObstacle(type, x, opts) {
     case 'beam':
       o.w = 110; o.h = 44; o.topY = GROUND - 92; break; // low beam: slide under
     case 'crates':
-      o.w = 88; o.h = 118; break;
+      o.w = 64; o.h = 100; break; // was 88x118: unjumpable (window 95-133 px, needed 152)
     case 'firejet':
       o.w = 70; o.h = 90; o.cycle = o.cycle || 0; o.burst = false; o.telegraph = false; break;
     case 'knifeFall':
@@ -179,13 +179,14 @@ export function drawObstacles(ctx, list, camX) {
         break;
       }
       case 'crates': {
+        // Two stacked crates, sized from o.w/o.h (64x100).
         ctx.fillStyle = '#a8763e';
-        ctx.fillRect(sx, GROUND - 118, 88, 58);
-        ctx.fillRect(sx + 6, GROUND - 58, 76, 58);
+        ctx.fillRect(sx, GROUND - o.h, o.w, o.h / 2);
+        ctx.fillRect(sx + 4, GROUND - o.h / 2, o.w - 8, o.h / 2);
         ctx.strokeStyle = '#7a5222';
         ctx.lineWidth = 3;
-        ctx.strokeRect(sx, GROUND - 118, 88, 58);
-        ctx.strokeRect(sx + 6, GROUND - 58, 76, 58);
+        ctx.strokeRect(sx, GROUND - o.h, o.w, o.h / 2);
+        ctx.strokeRect(sx + 4, GROUND - o.h / 2, o.w - 8, o.h / 2);
         break;
       }
       case 'firejet': {

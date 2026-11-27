@@ -32,11 +32,20 @@ export const CONFIG = {
 
   // Farmer FSM thresholds (px gap behind turkey).
   farmer: {
-    chaseTargetGap: 260,
-    chaseClamp: { min: -40, max: 90 },
+    chaseTargetGap: 185, // clean-run equilibrium gap (was 260: SURGE unreachable)
+    // min 0 (was -40): below the target the farmer holds his gap instead of
+    // drifting back — a mistake is not forgiven for free, so repeated hits
+    // ratchet the gap down until he touches. The clean-run equilibrium is
+    // unchanged (the clamp only binds below the target).
+    chaseClamp: { min: 0, max: 90 },
     chaseGain: 0.9,
     surgeEnterGap: 150,
-    surgeHoldSecs: 1.0,
+    // 3.0 s (was 1.0): with a 1.0 s hold the SURGE cycle fired ~1.3 s after
+    // a hit and its stumble reset the gap before the slow-ratchet could
+    // finish — the touch was unreachable in every seed. 3.0 s delays the
+    // SURGE until after the second-hit touch window, while SURGE stays a
+    // live threat (it still fires ~3.3 s after a mistake).
+    surgeHoldSecs: 3.0,
     windupSecs: 0.4,
     lungeSecs: 0.5,
     lungeBonus: 260,
@@ -44,12 +53,20 @@ export const CONFIG = {
     lagEnterGap: 480,
     lagExitGap: 380,
     lagSpeedMul: 0.55,
+    lagMaxSecs: 2.5, // LAG exits by timer at the latest (was: permanent trap)
+    catchUpMul: 1.15, // after LAG, farmer runs 1.15x until gap < catchUpExitGap
+    catchUpExitGap: 250,
     minStateSecs: 0.5,
     reactionSecs: 0.3,
     touchGap: 24,
     knockGap: 320,
-    invulnSecs: 1.5,
+    invulnSecs: 1.0,
   },
+
+  // Obstacle-hit slowdown: turkey drops to 55% speed for 0.7 s; the farmer
+  // keeps his own pace, so the gap closes (the main gap-closing mechanic).
+  obstacleSlowMul: 0.55,
+  obstacleSlowSecs: 0.7,
 
   // Feel.
   hitStopHit: 0.05,

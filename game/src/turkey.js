@@ -122,6 +122,78 @@ export function drawTurkey(ctx, t, screenX, time) {
   ctx.translate(sx, feetY + wob * 0.3);
   ctx.scale(1 / Math.sqrt(sq), sq);
 
+  // Slide pose (P1 fix): the old code drew the upright turkey even while
+  // sliding, so the player had no visual feedback for a core mechanic.
+  // Flattened low duck that fits inside the slide hitbox (38 px tall).
+  if (t.sliding) {
+    // Tail flattened back.
+    ctx.fillStyle = '#8a4b1f';
+    for (let i = -1; i <= 1; i++) {
+      ctx.save();
+      ctx.rotate((i * 0.3) - Math.PI / 2 + 0.5);
+      ctx.beginPath();
+      ctx.ellipse(-18, -14, 8, 18, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    // Body: wide flat ellipse.
+    ctx.fillStyle = '#7a4a21';
+    ctx.beginPath();
+    ctx.ellipse(4, -16, 42, 16, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Belly cream.
+    ctx.fillStyle = '#f7ead1';
+    ctx.beginPath();
+    ctx.ellipse(6, -13, 24, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Wing flat along the body.
+    ctx.fillStyle = '#5d3413';
+    ctx.beginPath();
+    ctx.ellipse(-4, -18, 20, 7, -0.15, 0, Math.PI * 2);
+    ctx.fill();
+    // Head low, forward.
+    ctx.fillStyle = '#7a4a21';
+    ctx.beginPath();
+    ctx.arc(38, -22, 10, 0, Math.PI * 2);
+    ctx.fill();
+    // Beak (orange).
+    ctx.fillStyle = '#e8710a';
+    ctx.beginPath();
+    ctx.moveTo(46, -24);
+    ctx.lineTo(58, -20);
+    ctx.lineTo(46, -16);
+    ctx.closePath();
+    ctx.fill();
+    // Wattle (red).
+    ctx.fillStyle = '#c0392b';
+    ctx.beginPath();
+    ctx.ellipse(44, -13, 3, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Eye.
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(41, -25, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath();
+    ctx.arc(42, -25, 1.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Legs tucked (short stubs).
+    ctx.strokeStyle = '#e8710a';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(-8, -4);
+    ctx.lineTo(-2, 0);
+    ctx.moveTo(10, -4);
+    ctx.lineTo(16, 0);
+    ctx.stroke();
+
+    ctx.restore();
+    ctx.globalAlpha = 1;
+    return;
+  }
+
   // Fanned tail (behind body).
   ctx.fillStyle = '#8a4b1f';
   for (let i = -2; i <= 2; i++) {

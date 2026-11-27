@@ -39,7 +39,11 @@ export function drawHUD(ctx, s) {
   ctx.fillStyle = '#f7ead1';
   ctx.font = 'bold 16px system-ui, sans-serif';
   ctx.textAlign = 'left';
-  const label = closeness > 0.75 ? 'FARMER RIGHT BEHIND YOU!' : closeness > 0.4 ? 'FARMER CLOSING IN' : 'FARMER FAR BEHIND';
+  const label = closeness > 0.75 ? 'RIGHT BEHIND YOU!' : closeness > 0.4 ? 'FARMER CLOSING IN' : 'FARMER FAR BEHIND';
+  // Longest label was 'FARMER RIGHT BEHIND YOU!' (33 chars incl. prefix,
+  // ~300 px) — it overflowed the 260 px bar panel and clipped at the right
+  // edge of the 1280 canvas (seen in 3-kitchen.jpg). 'RIGHT BEHIND YOU!'
+  // keeps the total at 27 chars, same as the other two labels.
   ctx.fillText('FARMER  •  ' + label, bx, 38);
   ctx.fillStyle = '#222';
   ctx.fillRect(bx, 50, barW, 16);
